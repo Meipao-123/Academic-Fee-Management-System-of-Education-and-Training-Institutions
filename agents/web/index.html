@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A1 涉众需求获取 · 对话平台</title>
+<style>
+  :root {
+    --bg: #f5f7fa;
+    --card: #ffffff;
+    --primary: #4f6ef7;
+    --primary-light: #eef1ff;
+    --text: #2c3e50;
+    --text-muted: #7f8c9b;
+    --border: #e8ecf1;
+    --user-bubble: #4f6ef7;
+    --user-text: #ffffff;
+    --agent-bubble: #f0f2f5;
+    --agent-text: #2c3e50;
+    --danger: #e74c3c;
+    --success: #27ae60;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    height: 100vh;
+    display: flex;
+  }
+
+  /* ── 左侧面板 ──────────────────────────────── */
+  .sidebar {
+    width: 320px;
+    background: var(--card);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .sidebar-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar-header h1 {
+    font-size: 18px;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .sidebar-header p {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .agent-list {
+    flex: 1;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .agent-card {
+    padding: 14px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .agent-card:hover {
+    border-color: var(--primary);
+    background: var(--primary-light);
+  }
+
+  .agent-card.active {
+    border-color: var(--primary);
+    background: var(--primary-light);
+  }
+
+  .agent-card .name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .agent-card .role {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+
+  .agent-card .modules {
+    font-size: 11px;
+    color: var(--primary);
+    line-height: 1.5;
+  }
+
+  /* ── 右侧对话区 ────────────────────────────── */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .chat-header {
+    padding: 16px 24px;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .chat-header .title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .chat-header .actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn {
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text);
+    transition: all 0.2s;
+  }
+
+  .btn:hover {
+    background: var(--bg);
+  }
+
+  .btn.primary {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+  }
+
+  .btn.primary:hover {
+    opacity: 0.9;
+  }
+
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .message {
+    display: flex;
+    gap: 10px;
+    max-width: 75%;
+  }
+
+  .message.user {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+  }
+
+  .message.agent {
+    align-self: flex-start;
+  }
+
+  .message .avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .message.user .avatar {
+    background: var(--primary);
+    color: white;
+  }
+
+  .message.agent .avatar {
+    background: var(--agent-bubble);
+    color: var(--text);
+  }
+
+  .message .bubble {
+    padding: 12px 16px;
+    border-radius: 14px;
+    font-size: 14px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .message.user .bubble {
+    background: var(--user-bubble);
+    color: var(--user-text);
+    border-bottom-right-radius: 4px;
+  }
+
+  .message.agent .bubble {
+    background: var(--agent-bubble);
+    color: var(--agent-text);
+    border-bottom-left-radius: 4px;
+  }
+
+  .message .meta {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  /* ── 输入区 ──────────────────────────────── */
+  .chat-input {
+    padding: 16px 24px;
+    background: var(--card);
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 12px;
+  }
+
+  .chat-input textarea {
+    flex: 1;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: none;
+    outline: none;
+    min-height: 44px;
+    max-height: 120px;
+    line-height: 1.5;
+  }
+
+  .chat-input textarea:focus {
+    border-color: var(--primary);
+  }
+
+  .chat-input .send-btn {
+    width: 44px;
+    height: 44px;
+    border: none;
+    background: var(--primary);
+    color: white;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 18px;
+    flex-shrink: 0;
+    transition: opacity 0.2s;
+  }
+
+  .chat-input .send-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .chat-input .send-btn:hover:not(:disabled) {
+    opacity: 0.9;
+  }
+
+  /* ── 状态提示 ──────────────────────────────── */
+  .empty-state {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    font-size: 14px;
+    text-align: center;
+    line-height: 2;
+  }
+
+  .typing-indicator {
+    display: flex;
+    gap: 4px;
+    padding: 8px 12px;
+  }
+
+  .typing-indicator span {
+    width: 8px;
+    height: 8px;
+    background: var(--text-muted);
+    border-radius: 50%;
+    animation: bounce 1.4s infinite ease-in-out both;
+  }
+
+  .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+  .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+
+  @keyframes bounce {
+    0%, 80%, 100% { transform: scale(0); }
+    40% { transform: scale(1); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══ 左侧面板 ═══ -->
+<div class="sidebar">
+  <div class="sidebar-header">
+    <h1>📋 A1 涉众需求获取</h1>
+    <p>己方 → 扮演涉众 | 对方 → A1 采访 Agent</p>
+  </div>
+  <div class="agent-list" id="agentList">
+    <!-- JS 动态填充 -->
+  </div>
+</div>
+
+<!-- ═══ 右侧对话 ═══ -->
+<div class="main">
+  <div class="chat-header">
+    <span class="title" id="chatTitle">👈 请选择一个采访 Agent</span>
+    <div class="actions">
+      <button class="btn" onclick="exportChat()" title="导出对话记录">📥 导出记录</button>
+      <button class="btn" onclick="clearChat()">🗑 清空</button>
+    </div>
+  </div>
+
+  <div class="chat-messages" id="chatMessages">
+    <div class="empty-state">
+      左侧选择一个 A1 采访 Agent<br>
+      你（涉众） ← 对话 → A1 Agent（采访方）
+    </div>
+  </div>
+
+  <div class="chat-input">
+    <textarea
+      id="messageInput"
+      placeholder="输入你的回复（你扮演涉众角色）..."
+      rows="1"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage()}"
+    ></textarea>
+    <button class="send-btn" id="sendBtn" onclick="sendMessage()" disabled>➤</button>
+  </div>
+</div>
+
+<!-- ═══ JS ═══ -->
+<script>
+// ── 全局状态 ─────────────────────────────────
+let currentAgent = null;
+let agentMessages = {};   // { agent_id: [{role,content}, ...] }
+let isTyping = false;
+
+// ── 初始化 ───────────────────────────────────
+async function init() {
+  try {
+    const res = await fetch('/api/agents');
+    const list = await res.json();
+    renderAgentList(list);
+    // 初始化每个 Agent 的消息历史
+    list.forEach(a => { agentMessages[a.id] = []; });
+  } catch (err) {
+    console.error('加载 Agent 列表失败:', err);
+  }
+}
+
+function renderAgentList(list) {
+  const container = document.getElementById('agentList');
+  container.innerHTML = list.map(a => `
+    <div class="agent-card" onclick="selectAgent('${a.id}')" id="card-${a.id}">
+      <div class="name">${a.name}</div>
+      <div class="role">${a.role}</div>
+      <div class="modules">📌 ${a.modules.slice(0,4).join(' · ')}${a.modules.length>4?'…':''}</div>
+    </div>
+  `).join('');
+}
+
+// ── 选择 Agent ───────────────────────────────
+function selectAgent(id) {
+  currentAgent = id;
+  // 高亮
+  document.querySelectorAll('.agent-card').forEach(c => c.classList.remove('active'));
+  document.getElementById(`card-${id}`).classList.add('active');
+
+  // 更新标题
+  const name = document.getElementById(`card-${id}`).querySelector('.name').textContent;
+  document.getElementById('chatTitle').textContent = `🎯 ${name} · 涉众对话`;
+
+  // 渲染历史消息
+  renderMessages();
+
+  // 启用输入
+  document.getElementById('messageInput').disabled = false;
+  document.getElementById('sendBtn').disabled = false;
+  document.getElementById('messageInput').focus();
+
+  // 如果是首次对话，显示开场
+  if (agentMessages[id].length === 0) {
+    addMessage('agent', '您好！我是需求分析团队的 A1 智能体。\n\n请先简单介绍一下您在这个机构中的角色和日常工作内容吧？我们聊聊您最关心的几个业务问题。');
+  }
+}
+
+// ── 发送消息 ─────────────────────────────────
+async function sendMessage() {
+  if (!currentAgent || isTyping) return;
+
+  const input = document.getElementById('messageInput');
+  const text = input.value.trim();
+  if (!text) return;
+
+  // 用户消息
+  agentMessages[currentAgent].push({ role: 'user', content: text });
+  addMessage('user', text);
+  input.value = '';
+  input.style.height = 'auto';
+
+  // 打字指示器
+  isTyping = true;
+  document.getElementById('sendBtn').disabled = true;
+  showTyping();
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        agent_id: currentAgent,
+        messages: agentMessages[currentAgent],
+      }),
+    });
+
+    removeTyping();
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    agentMessages[currentAgent].push({ role: 'assistant', content: data.reply });
+    addMessage('agent', data.reply);
+  } catch (err) {
+    removeTyping();
+    addMessage('agent', `⚠️ 请求失败：${err.message}\n\n请检查后端服务是否正常运行。`);
+  } finally {
+    isTyping = false;
+    document.getElementById('sendBtn').disabled = false;
+    document.getElementById('messageInput').focus();
+  }
+}
+
+// ── 渲染消息 ─────────────────────────────────
+function renderMessages() {
+  const container = document.getElementById('chatMessages');
+  const msgs = currentAgent ? agentMessages[currentAgent] : [];
+
+  if (msgs.length === 0) {
+    container.innerHTML = '<div class="empty-state">左侧选择一个 A1 采访 Agent<br>你（涉众） ← 对话 → A1 Agent（采访方）</div>';
+    return;
+  }
+
+  container.innerHTML = msgs.map(m => `
+    <div class="message ${m.role === 'user' ? 'user' : 'agent'}">
+      <div class="avatar">${m.role === 'user' ? '👤' : '🤖'}</div>
+      <div>
+        <div class="bubble">${escapeHtml(m.content)}</div>
+        <div class="meta">${m.role === 'user' ? '你（涉众）' : 'A1 Agent（采访方）'}</div>
+      </div>
+    </div>
+  `).join('');
+
+  container.scrollTop = container.scrollHeight;
+}
+
+function addMessage(role, content) {
+  const container = document.getElementById('chatMessages');
+  // 移除空状态
+  const empty = container.querySelector('.empty-state');
+  if (empty) empty.remove();
+
+  const div = document.createElement('div');
+  div.className = `message ${role}`;
+  div.innerHTML = `
+    <div class="avatar">${role === 'user' ? '👤' : '🤖'}</div>
+    <div>
+      <div class="bubble">${escapeHtml(content)}</div>
+      <div class="meta">${role === 'user' ? '你（涉众）' : 'A1 Agent（采访方）'}</div>
+    </div>
+  `;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+// ── 打字指示器 ───────────────────────────────
+function showTyping() {
+  const container = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = 'message agent';
+  div.id = 'typingIndicator';
+  div.innerHTML = `
+    <div class="avatar">🤖</div>
+    <div class="bubble"><div class="typing-indicator"><span></span><span></span><span></span></div></div>
+  `;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function removeTyping() {
+  const el = document.getElementById('typingIndicator');
+  if (el) el.remove();
+}
+
+// ── 导出 / 清空 ──────────────────────────────
+function exportChat() {
+  if (!currentAgent) return;
+  const msgs = agentMessages[currentAgent];
+  if (msgs.length === 0) { alert('暂无对话记录'); return; }
+
+  const name = document.getElementById(`card-${currentAgent}`).querySelector('.name').textContent;
+  const now = new Date();
+  const ts = now.getFullYear()
+    + String(now.getMonth()+1).padStart(2,'0')
+    + String(now.getDate()).padStart(2,'0') + '-'
+    + String(now.getHours()).padStart(2,'0')
+    + String(now.getMinutes()).padStart(2,'0');
+
+  let text = `# ${name.replace('A1-','').replace('-需求获取','')} 需求获取记录\n`;
+  text += `- 采访日期：${ts}\n`;
+  text += `- 采访 Agent：${name}\n`;
+  text += `- 对话轮次：${Math.ceil(msgs.length/2)} 轮\n\n`;
+  text += `## 对话记录\n\n`;
+  msgs.forEach((m, i) => {
+    const role = m.role === 'user' ? '涉众' : 'A1 Agent';
+    text += `**${role}** (第${Math.floor(i/2)+1}轮):\n${m.content}\n\n`;
+  });
+
+  const blob = new Blob([text], { type: 'text/markdown;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${name.replace('A1-','')}-${ts}-需求记录.md`;
+  a.click();
+}
+
+function clearChat() {
+  if (!currentAgent) return;
+  if (!confirm('确定清空当前对话记录？')) return;
+  agentMessages[currentAgent] = [];
+  renderMessages();
+}
+
+// ── 工具 ─────────────────────────────────────
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// ── 启动 ─────────────────────────────────────
+init();
+</script>
+</body>
+</html>
