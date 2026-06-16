@@ -1,7 +1,7 @@
 """
 academic_affairs_agent.py — A1 需求获取 Agent（采访方：教务老师）
 """
-from prompt_kit import build_system_prompt
+from agents.prompt_kit import build_system_prompt
 
 ROLE = "需求获取分析师（教务管理方向）"
 GOAL = ("深入采访教务老师，全面获取排课管理、班级管理、考勤消课、"

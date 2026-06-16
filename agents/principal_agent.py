@@ -1,7 +1,7 @@
 """
 principal_agent.py — A1 需求获取 Agent（采访方：校长）
 """
-from prompt_kit import build_system_prompt
+from agents.prompt_kit import build_system_prompt
 
 ROLE = "需求获取分析师（经营管理方向）"
 GOAL = ("深入采访校长，全面获取经营数据看板、招生转化分析、教学运营监控、"

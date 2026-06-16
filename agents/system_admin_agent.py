@@ -1,7 +1,7 @@
 """
 system_admin_agent.py — A1 需求获取 Agent（采访方：系统管理员）
 """
-from prompt_kit import build_system_prompt
+from agents.prompt_kit import build_system_prompt
 
 ROLE = "需求获取分析师（系统运维方向）"
 GOAL = ("深入采访系统管理员，全面获取账号权限、业务参数配置、部署与性能、"

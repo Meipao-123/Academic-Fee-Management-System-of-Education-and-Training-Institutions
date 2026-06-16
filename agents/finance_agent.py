@@ -1,7 +1,7 @@
 """
 finance_agent.py — A1 需求获取 Agent（采访方：财务人员）
 """
-from prompt_kit import build_system_prompt
+from agents.prompt_kit import build_system_prompt
 
 ROLE = "需求获取分析师（财务方向）"
 GOAL = ("深入采访财务人员，全面获取收款记录、预收款与收入确认、退费流程、"
