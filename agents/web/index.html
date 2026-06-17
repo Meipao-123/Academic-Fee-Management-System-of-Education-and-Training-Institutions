@@ -307,6 +307,39 @@
     0%, 80%, 100% { transform: scale(0); }
     40% { transform: scale(1); }
   }
+
+  /* ── 模式切换开关 ──────────────────────────────── */
+  .mode-toggle-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg);
+    border-radius: 20px;
+    padding: 3px;
+    border: 1px solid var(--border);
+  }
+
+  .mode-toggle-group .mode-option {
+    padding: 6px 14px;
+    border-radius: 17px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  .mode-toggle-group .mode-option.active {
+    background: var(--primary);
+    color: white;
+    font-weight: 600;
+  }
+
+  .mode-toggle-group .mode-divider {
+    width: 1px;
+    height: 16px;
+    background: var(--border);
+  }
 </style>
 </head>
 <body>
@@ -327,6 +360,10 @@
   <div class="chat-header">
     <span class="title" id="chatTitle">👈 请选择一个采访 Agent</span>
     <div class="actions">
+      <div class="mode-toggle-group" id="modeToggleGroup">
+        <span class="mode-option active" data-mode="step_by_step" onclick="switchMode('step_by_step')">🐢 逐步提问</span>
+        <span class="mode-option" data-mode="batch" onclick="switchMode('batch')">⚡ 一次性清单</span>
+      </div>
       <button class="btn" onclick="exportChat()" title="导出对话记录">📥 导出记录</button>
       <button class="btn" onclick="clearChat()">🗑 清空</button>
     </div>
@@ -354,6 +391,7 @@
 <script>
 // ── 全局状态 ─────────────────────────────────
 let currentAgent = null;
+let currentMode = 'step_by_step';
 let agentMessages = {};   // { agent_id: [{role,content}, ...] }
 let isTyping = false;
 
@@ -381,6 +419,24 @@ function renderAgentList(list) {
   `).join('');
 }
 
+// ── 模式切换 ────────────────────────────
+function switchMode(mode) {
+  currentMode = mode;
+  document.querySelectorAll('.mode-option').forEach(el => {
+    el.classList.toggle('active', el.dataset.mode === mode);
+  });
+  // 清空消息历史，让 Agent 以新模式重新开局
+  if (currentAgent) {
+    agentMessages[currentAgent] = [];
+    renderMessages();
+    // 重新触发起始消息
+    addMessage('agent',
+      mode === 'batch'
+        ? '已切换到一次性清单模式。请等待我列出所有关键问题……'
+        : '已切换到逐步提问模式。请先简单介绍一下您的日常工作内容吧？');
+  }
+}
+
 // ── 选择 Agent ───────────────────────────────
 function selectAgent(id) {
   currentAgent = id;
@@ -402,7 +458,11 @@ function selectAgent(id) {
 
   // 如果是首次对话，显示开场
   if (agentMessages[id].length === 0) {
-    addMessage('agent', '您好！我是需求分析团队的 A1 智能体。\n\n请先简单介绍一下您在这个机构中的角色和日常工作内容吧？我们聊聊您最关心的几个业务问题。');
+    if (currentMode === 'batch') {
+      addMessage('agent', '已选择一次性清单模式。我将一次性列出所有关键问题，请准备好逐一详细回答。');
+    } else {
+      addMessage('agent', '您好！我是需求分析团队的 A1 智能体。\n\n请先简单介绍一下您在这个机构中的角色和日常工作内容吧？我们聊聊您最关心的几个业务问题。');
+    }
   }
 }
 
@@ -432,6 +492,7 @@ async function sendMessage() {
       body: JSON.stringify({
         agent_id: currentAgent,
         messages: agentMessages[currentAgent],
+        mode: currentMode,
       }),
     });
 

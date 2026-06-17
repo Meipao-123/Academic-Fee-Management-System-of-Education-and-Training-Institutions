@@ -101,6 +101,7 @@ class ChatHandler(SimpleHTTPRequestHandler):
 
             agent_id = data.get("agent_id", "")
             messages = data.get("messages", [])
+            mode = data.get("mode", "step_by_step")
 
             if agent_id not in agent_map:
                 self._json_response(400, {"error": f"未知 Agent: {agent_id}"})
@@ -111,7 +112,7 @@ class ChatHandler(SimpleHTTPRequestHandler):
                 return
 
             mod = agent_map[agent_id]
-            system_prompt = mod.build_prompt()
+            system_prompt = mod.build_prompt(mode=mode)
 
             full_messages = [
                 {"role": "system", "content": system_prompt},

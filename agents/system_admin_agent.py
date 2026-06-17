@@ -33,5 +33,5 @@ PROBING_QUESTIONS = [
     "安全扫描/渗透测试的频率要求？是否符合等保要求？",
 ]
 
-def build_prompt() -> str:
-    return build_system_prompt("系统管理员", MODULES)
+def build_prompt(mode: str = "step_by_step") -> str:
+    return build_system_prompt("系统管理员", MODULES, mode=mode)

@@ -32,5 +32,5 @@ PROBING_QUESTIONS = [
     "多校区财务是否需要合并报表？是否独立核算？",
 ]
 
-def build_prompt() -> str:
-    return build_system_prompt("财务人员", MODULES)
+def build_prompt(mode: str = "step_by_step") -> str:
+    return build_system_prompt("财务人员", MODULES, mode=mode)

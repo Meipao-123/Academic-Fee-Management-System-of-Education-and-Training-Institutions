@@ -39,9 +39,12 @@ PROBING_QUESTIONS = [
 ]
 
 
-def build_prompt() -> str:
-    """组装该 Agent 的完整系统提示词。"""
-    return build_system_prompt("课程顾问", MODULES)
+def build_prompt(mode: str = "step_by_step") -> str:
+    """组装该 Agent 的完整系统提示词。
+    Args:
+        mode: "step_by_step"（逐步追问）或 "batch"（一次性清单）
+    """
+    return build_system_prompt("课程顾问", MODULES, mode=mode)
 
 
 # ── CrewAI Agent 构造（如使用 CrewAI 框架）─────────────────────

@@ -29,5 +29,6 @@ PROBING_QUESTIONS = [
     "教室和教师被占用到一半临时取消，是否自动释放资源？",
 ]
 
-def build_prompt() -> str:
-    return build_system_prompt("教务老师", MODULES)
+def build_prompt(mode: str = "step_by_step") -> str:
+    """组装该 Agent 的完整系统提示词。"""
+    return build_system_prompt("教务老师", MODULES, mode=mode)

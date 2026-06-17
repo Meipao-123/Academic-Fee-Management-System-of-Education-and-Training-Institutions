@@ -30,5 +30,5 @@ PROBING_QUESTIONS = [
     "经营数据看板是否需要大屏展示（TV/一体机）？",
 ]
 
-def build_prompt() -> str:
-    return build_system_prompt("校长", MODULES)
+def build_prompt(mode: str = "step_by_step") -> str:
+    return build_system_prompt("校长", MODULES, mode=mode)
