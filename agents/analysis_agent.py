@@ -26,7 +26,7 @@ from agents.llm_config import chat
 # -- 配置 -------------------------------------------------------
 RAW_DIR = ROOT / "raw" / "notes"
 OUT_DIR = ROOT / "wiki" / "summaries"
-BATCH_SIZE = 3000  # 每次发送给 API 的最大字符数
+BATCH_SIZE = 2000  # 每次发送给 API 的最大字符数
 
 
 # -- A2 系统提示词 -----------------------------------------------
@@ -59,18 +59,31 @@ def load_records():
         if f.name == ".gitkeep":
             continue
         content = f.read_text(encoding="utf-8")
-        # 提取涉众发言行
-        stakeholder_lines = []
-        for line in content.split("\n"):
+        # 提取涉众发言块(从 **涉众** 到下一个 **A1 Agent** 之间的所有内容)
+        stakeholder_blocks = []
+        lines = content.split("\n")
+        capturing = False
+        current_block = []
+        for line in lines:
             if line.startswith("**涉众**"):
-                stakeholder_lines.append(line)
+                capturing = True
+                current_block = [line]
+            elif line.startswith("**A1 Agent**") and capturing:
+                capturing = False
+                stakeholder_blocks.append("\n".join(current_block))
+                current_block = []
+            elif capturing:
+                current_block.append(line)
+        # 如果文件末尾还有未闭合的块
+        if capturing and current_block:
+            stakeholder_blocks.append("\n".join(current_block))
         # 提取涉众名称(从文件名)
         name = f.stem.split("-需求获取")[0].split("-")[0].strip()
         records[name] = {
             "file": f.name,
             "full_text": content,
-            "stakeholder_text": "\n".join(stakeholder_lines),
-            "line_count": len(stakeholder_lines),
+            "stakeholder_text": "\n".join(stakeholder_blocks),
+            "stakeholder_lines": len(stakeholder_blocks),
         }
     return records
 
@@ -118,9 +131,11 @@ def analyze_cross_stakeholder(records):
     """跨涉众冲突检测: 将5份记录的摘要一起发给 API"""
     summaries = []
     for name, info in records.items():
-        # 取每份记录的前 600 字符作为摘要
-        summary = info["stakeholder_text"][:600]
-        summaries.append("### %s\n%s\n" % (name, summary))
+        # 每个涉众取完整对话的前 1500 字符作为摘要(含涉众发言+上下文)
+        summary = info["full_text"][:1500]
+        # 提取每个涉众的关键需求点(从stakeholder_text取前800字符)
+        demands = info["stakeholder_text"][:800] if info["stakeholder_text"] else "(无)"
+        summaries.append("### %s\n**完整上下文(前1500字符):**\n%s\n\n**需求要点(前800字符):**\n%s\n" % (name, summary, demands))
 
     combined = "\n".join(summaries)
     user_msg = (
@@ -162,7 +177,7 @@ def generate_report(records, findings, cross_findings):
     for name, info in records.items():
         issue_report += "## %s\n\n" % name
         issue_report += "- 文件: `%s`\n" % info["file"]
-        issue_report += "- 涉众发言行数: %d\n\n" % info["line_count"]
+        issue_report += "- 涉众发言块数: %d\n\n" % info["stakeholder_lines"]
         if name in findings:
             issue_report += findings[name] + "\n\n"
         else:
@@ -215,7 +230,7 @@ def main():
     records = load_records()
     print("\n[1/4] 已加载 %d 份需求记录:" % len(records))
     for name, info in records.items():
-        print("  - %s: %d 行涉众发言" % (name, info["line_count"]))
+        print("  - %s: %d 块涉众发言" % (name, info["stakeholder_lines"]))
 
     # 2. 逐涉众分析
     print("\n[2/4] 逐涉众分析中...")
