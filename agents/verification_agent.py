@@ -55,7 +55,7 @@ SYSTEM_PROMPT = (
 def load_srs():
     path = OUT_DIR / "SRS-v1.1.md"
     if path.exists():
-        return path.read_text(encoding="utf-8")[:5000]
+        return path.read_text(encoding="utf-8")
     return "(SRS未找到)"
 
 
@@ -66,14 +66,14 @@ def load_records():
             continue
         content = f.read_text(encoding="utf-8")
         name = f.stem.split("-需求获取")[0]
-        texts.append("### %s\n%s" % (name, content[:800]))
+        texts.append("### %s\n%s" % (name, content[:2000]))
     return "\n\n".join(texts)
 
 
 def load_issue_summary():
     path = OUT_DIR / "需求问题清单-v1.0.md"
     if path.exists():
-        return path.read_text(encoding="utf-8")[:3000]
+        return path.read_text(encoding="utf-8")[:5000]
     return "(无)"
 
 
@@ -89,7 +89,7 @@ def load_uml_summary():
     for f in uml_files:
         path = summaries / f
         if path.exists():
-            texts.append("### %s\n```puml\n%s\n```" % (f, path.read_text(encoding="utf-8")[:1500]))
+            texts.append("### %s\n```puml\n%s\n```" % (f, path.read_text(encoding="utf-8")[:2000]))
     return "\n\n".join(texts) if texts else "(暂无UML)"
 
 
