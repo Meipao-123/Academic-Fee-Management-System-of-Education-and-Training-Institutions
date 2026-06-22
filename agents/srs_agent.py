@@ -54,8 +54,8 @@ def generate_srs(records_summary, issue_summary, uml_summary):
             {"role": "user", "content": user_msg},
         ],
         temperature=0.4,
-        max_tokens=8192,
-        timeout=300,
+        max_tokens=16384,
+        timeout=600,
     )
     return result["content"]
 
