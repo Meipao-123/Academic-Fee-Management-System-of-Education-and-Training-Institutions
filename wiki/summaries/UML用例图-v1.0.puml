@@ -1,171 +1,111 @@
-@startuml 教育培训机构教务收费管理系统-用例图
-' ============================================================
-' A3 建模智能体 — 用例图 v1.0
-' 来源: raw/notes/ 5份涉众需求记录 + 作战计划 §7 模块清单
-' ============================================================
-
+@startuml
 left to right direction
 skinparam packageStyle rectangle
 skinparam actorStyle awesome
 
-' ── 涉众（Actor）──────────────────────────────────────────
-actor "课程顾问" as Consultant
-actor "教务老师" as Academic
-actor "财务人员" as Finance
-actor "校长" as Principal
-actor "系统管理员" as Admin
+actor "家长/学员" as Parent
+actor 课程顾问
+actor 教务老师
+actor 财务人员
+actor 校长
+actor 系统管理员
 
-actor "家长/学员" as Parent <<external>>
-actor "支付平台" as Payment <<external>>
-actor "短信/通知服务" as SMS <<external>>
-
-' ═══════════════════════════════════════════════════════════
-' 课程顾问 用例
-' ═══════════════════════════════════════════════════════════
-package "课程顾问 · 销售咨询" {
-  usecase "登记客户线索" as UC_Lead
-  usecase "推荐课程与安排试听" as UC_Trial
-  usecase "处理报名与生成订单" as UC_Order
-  usecase "管理优惠与缴费引导" as UC_Discount
-  usecase "客户跟进与转化统计" as UC_FollowUp
-  usecase "移动端查名额/收款" as UC_Mobile
-  
-  Consultant --> UC_Lead
-  Consultant --> UC_Trial
-  Consultant --> UC_Order
-  Consultant --> UC_Discount
-  Consultant --> UC_FollowUp
-  Consultant --> UC_Mobile
-  
-  UC_Order ..> Parent : 通知报名结果
-  UC_Trial ..> Parent : 通知试听安排
-  UC_Discount ..> UC_Order : <<include>>
+package "课程顾问" {
+    usecase "线索建档\n(自动/手动)" as UC_Lead
+    usecase "线索查重\n(阻断/提醒/归属)" as UC_Dedupe
+    usecase "推荐课程" as UC_Recommend
+    usecase "处理报名/选课" as UC_Enroll
+    usecase "转介绍管理" as UC_Referral
+    usecase "处理退费/转班" as UC_Refund
 }
 
-' ═══════════════════════════════════════════════════════════
-' 教务老师 用例
-' ═══════════════════════════════════════════════════════════
-package "教务老师 · 教务管理" {
-  usecase "排课管理" as UC_Schedule
-  usecase "班级管理" as UC_Class
-  usecase "考勤与消课" as UC_Attendance
-  usecase "请假调课补课" as UC_Leave
-  usecase "转班与课程变更" as UC_Transfer
-  usecase "教师课时统计" as UC_TeacherHours
-  
-  Academic --> UC_Schedule
-  Academic --> UC_Class
-  Academic --> UC_Attendance
-  Academic --> UC_Leave
-  Academic --> UC_Transfer
-  Academic --> UC_TeacherHours
-  
-  UC_Attendance ..> Parent : 通知消课结果
-  UC_Leave ..> Parent : 通知请假/补课
-  UC_Attendance ..> Finance : 消课数据→收入确认
-  UC_TeacherHours ..> Finance : 课时数据→工资核算
+package "教务老师" {
+    usecase "学期排课\n(冲突检测)" as UC_Schedule
+    usecase "调课管理" as UC_Reschedule
+    usecase "班级名额管控" as UC_Capacity
+    usecase "打卡签到\n(扫码/点名)" as UC_Checkin
+    usecase "请假/调课处理" as UC_Leave
+    usecase "生成消课报表" as UC_Report
 }
 
-' ═══════════════════════════════════════════════════════════
-' 财务人员 用例
-' ═══════════════════════════════════════════════════════════
-package "财务人员 · 财务管理" {
-  usecase "收款与订单财务记录" as UC_Receipt
-  usecase "预收款与收入确认" as UC_Revenue
-  usecase "退费流程管理" as UC_Refund
-  usecase "欠费与续费提醒" as UC_Arrears
-  usecase "发票管理" as UC_Invoice
-  usecase "支付对账" as UC_Reconciliation
-  usecase "教师工资与成本核算" as UC_Salary
-  usecase "财务报表生成" as UC_FinanceReport
-  
-  Finance --> UC_Receipt
-  Finance --> UC_Revenue
-  Finance --> UC_Refund
-  Finance --> UC_Arrears
-  Finance --> UC_Invoice
-  Finance --> UC_Reconciliation
-  Finance --> UC_Salary
-  Finance --> UC_FinanceReport
-  
-  UC_Receipt ..> Payment : 对接微信/支付宝/银行
-  UC_Refund ..> Payment : 原路退款
-  UC_Refund ..> Principal : 多级审批
-  UC_Arrears ..> Parent : 发送欠费提醒
-  UC_Invoice ..> Parent : 开具电子发票
-  UC_FinanceReport ..> Principal : 提供财务数据
+package "财务人员" {
+    usecase "收费台账管理" as UC_Ledger
+    usecase "教师薪资核算" as UC_Salary
+    usecase "发票管理" as UC_Invoice
+    usecase "第三方支付对账" as UC_Reconciliation
+    usecase "欠费预警" as UC_Arrears
+    usecase "退费审批\n(多级流程)" as UC_Approval
+    usecase "优惠活动配置" as UC_Promotion
 }
 
-' ═══════════════════════════════════════════════════════════
-' 校长 用例
-' ═══════════════════════════════════════════════════════════
-package "校长 · 经营管理" {
-  usecase "经营数据看板" as UC_Dashboard
-  usecase "招生与转化分析" as UC_Enrollment
-  usecase "教学运营分析" as UC_Operation
-  usecase "财务与资金安全监控" as UC_FundMonitor
-  usecase "多校区管理" as UC_MultiCampus
-  usecase "审批管理" as UC_Approval
-  usecase "移动端管理" as UC_PrincipalMobile
-  
-  Principal --> UC_Dashboard
-  Principal --> UC_Enrollment
-  Principal --> UC_Operation
-  Principal --> UC_FundMonitor
-  Principal --> UC_MultiCampus
-  Principal --> UC_Approval
-  Principal --> UC_PrincipalMobile
-  
-  UC_Approval ..> UC_Refund : 审批退费
-  UC_Approval ..> UC_Discount : 审批优惠
-  UC_Dashboard ..> UC_FinanceReport : 数据来源
-  UC_Dashboard ..> UC_FollowUp : 数据来源
-  UC_Dashboard ..> UC_TeacherHours : 数据来源
+package "校长" {
+    usecase "营收对比分析" as UC_Revenue
+    usecase "招生统计分析" as UC_EnrollStats
+    usecase "续费率分析" as UC_Renewal
+    usecase "满班率分析" as UC_FullClass
+    usecase "营销效果分析" as UC_Marketing
+    usecase "数据主动预警" as UC_Alerts
 }
 
-' ═══════════════════════════════════════════════════════════
-' 系统管理员 用例
-' ═══════════════════════════════════════════════════════════
-package "系统管理员 · 系统运维" {
-  usecase "账号与组织架构管理" as UC_Account
-  usecase "权限模型管理(RBAC)" as UC_Permission
-  usecase "业务参数配置" as UC_Config
-  usecase "系统部署与性能扩展" as UC_Deploy
-  usecase "数据备份与灾备" as UC_Backup
-  usecase "支付接口与第三方对接" as UC_Integration
-  usecase "日志审计" as UC_Audit
-  usecase "安全管理" as UC_Security
-  
-  Admin --> UC_Account
-  Admin --> UC_Permission
-  Admin --> UC_Config
-  Admin --> UC_Deploy
-  Admin --> UC_Backup
-  Admin --> UC_Integration
-  Admin --> UC_Audit
-  Admin --> UC_Security
-  
-  UC_Integration ..> Payment : 配置支付通道
-  UC_Integration ..> SMS : 配置通知通道
-  UC_Permission ..> Consultant : 授权
-  UC_Permission ..> Academic : 授权
-  UC_Permission ..> Finance : 授权
-  UC_Permission ..> Principal : 授权
+package "系统管理员" {
+    usecase "多校区数据隔离" as UC_Isolation
+    usecase "用户权限管理" as UC_Rights
+    usecase "操作日志审计" as UC_Audit
+    usecase "系统配置维护" as UC_Config
+    usecase "历史数据导入" as UC_Import
 }
 
-' ═══════════════════════════════════════════════════════════
-' 家长/学员 外部用例
-' ═══════════════════════════════════════════════════════════
-package "家长小程序（外部）" {
-  usecase "查询课表与消课记录" as UC_ParentSchedule
-  usecase "在线请假" as UC_ParentLeave
-  usecase "缴费与查看订单" as UC_ParentPay
-  usecase "接收通知与评价" as UC_ParentNotify
-  
-  Parent --> UC_ParentSchedule
-  Parent --> UC_ParentLeave
-  Parent --> UC_ParentPay
-  Parent --> UC_ParentNotify
-}
+' 外部 Actor 关联
+Parent --> UC_Enroll
+Parent --> UC_Referral
+Parent --> UC_Leave : 请假申请
+
+' 内部 Actor 关联
+课程顾问 --> UC_Lead
+课程顾问 --> UC_Dedupe
+课程顾问 --> UC_Recommend
+课程顾问 --> UC_Enroll
+课程顾问 --> UC_Referral
+课程顾问 --> UC_Refund
+
+教务老师 --> UC_Schedule
+教务老师 --> UC_Reschedule
+教务老师 --> UC_Capacity
+教务老师 --> UC_Checkin
+教务老师 --> UC_Leave
+教务老师 --> UC_Report
+
+财务人员 --> UC_Ledger
+财务人员 --> UC_Salary
+财务人员 --> UC_Invoice
+财务人员 --> UC_Reconciliation
+财务人员 --> UC_Arrears
+财务人员 --> UC_Approval
+财务人员 --> UC_Promotion
+
+校长 --> UC_Revenue
+校长 --> UC_EnrollStats
+校长 --> UC_Renewal
+校长 --> UC_FullClass
+校长 --> UC_Marketing
+校长 --> UC_Alerts
+
+系统管理员 --> UC_Isolation
+系统管理员 --> UC_Rights
+系统管理员 --> UC_Audit
+系统管理员 --> UC_Config
+系统管理员 --> UC_Import
+
+' 跨涉众依赖关系 (..>)
+课程顾问 ..> 财务人员 : 支付对账确认
+课程顾问 ..> 教务老师 : 班级名额查询
+教务老师 ..> 系统管理员 : 校区数据隔离
+教务老师 ..> 课程顾问 : 报名/转班信息同步
+财务人员 ..> 系统管理员 : 退费审批流配置
+财务人员 ..> 教务老师 : 课消数据获取
+校长 ..> 教务老师 : 招生/满班率数据
+校长 ..> 课程顾问 : 招生/营收数据
+校长 ..> 财务人员 : 营收/欠费数据
+系统管理员 ..> 校长 : 经营报表数据支撑
 
 @enduml

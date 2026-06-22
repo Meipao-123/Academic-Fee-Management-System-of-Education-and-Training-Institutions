@@ -68,8 +68,8 @@ def load_summary():
             continue
         content = f.read_text(encoding="utf-8")
         name = f.stem.split("-需求获取")[0]
-        # 取前 800 字符摘要
-        summaries.append("### %s\n%s\n" % (name, content[:800]))
+        # 取前 2000 字符摘要
+        summaries.append("### %s\n%s\n" % (name, content[:2000]))
     return "\n".join(summaries)
 
 
@@ -78,7 +78,7 @@ def load_issue_summary():
     issue_path = ROOT / "wiki" / "summaries" / "需求问题清单-v1.0.md"
     if issue_path.exists():
         content = issue_path.read_text(encoding="utf-8")
-        return content[:2000]
+        return content[:4000]
     return "(无)"
 
 
@@ -87,12 +87,15 @@ def load_uml_summary():
     summaries = ROOT / "wiki" / "summaries"
     uml_files = [
         "UML用例图-v1.0.puml",
+        "UML报名缴费-活动图-v1.0.puml",
+        "UML退费流程-活动图-v1.0.puml",
+        "UML排课消课-活动图-v1.0.puml",
     ]
     texts = []
     for f in uml_files:
         path = summaries / f
         if path.exists():
-            texts.append("### %s\n%s" % (f, path.read_text(encoding="utf-8")[:800]))
+            texts.append("### %s\n```puml\n%s\n```" % (f, path.read_text(encoding="utf-8")[:2000]))
     return "\n".join(texts) if texts else "(暂无UML)"
 
 

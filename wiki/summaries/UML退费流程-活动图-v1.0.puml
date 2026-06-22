@@ -1,67 +1,91 @@
-@startuml 退费流程-活动图
-' ============================================================
-' A3 建模智能体 — 活动图：退费流程
-' 来源: 财务人员+校长 需求记录
-' ============================================================
+@startuml
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontName Microsoft YaHei
+skinparam activityBorderColor #4B7BE5
+skinparam activityBackgroundColor #E8F0FE
+skinparam activityDiamondBorderColor #E57373
+skinparam activityDiamondBackgroundColor #FFEBEE
+skinparam arrowColor #607D8B
+skinparam noteBorderColor #FF9800
+skinparam noteBackgroundColor #FFF3E0
+skinparam swimlaneWidth 200
 
-title 退费流程（多级审批）
+title 培训机构退费全链路活动图
 
+|学员/家长|
 start
+:提交退费申请\n(附理由与证明材料);
+note right: 线上提交或\n前台填单
+|
 
-:家长/学员提出退费申请;
-
-:课程顾问接收申请;
-:核查报名信息与消课记录;
-
-:计算应退金额;
-note right
-  应退金额 = 实付总额
-    - 已消课时费
-    - 已耗用教材费
-    - 赠课折算(如有)
-  赠送课时按消课比例折算
-end note
-
-if (应退金额 ≤ 2000?) then (是)
-  :课程顾问直接审批;
-else if (应退金额 ≤ 5000?) then (否)
-  :教务主管审批;
-else if (应退金额 ≤ 10000?) then (否)
-  :财务主管审批;
-else (否)
-  :校长终审;
-endif
-
-if (审批通过?) then (否)
-  :退回申请\n附审批意见;
-  stop
+|教务/销售|
+:核实退费条件\n(合同/考勤/课消/有效期);
+if (是否满足退费政策?) then (否)
+    :填写驳回原因\n并退回申请;
+    |系统/支付网关|
+    :推送驳回通知\n(微信/短信/App);
+    #pink:驳回终止;
+    stop
 else (是)
 endif
 
-:生成退费单;
-:通知财务执行退款;
+|系统/支付网关|
+:自动计算应退金额\n(应退 = 实缴 - 已上课时 - 手续费/违约金);
+note left: 系统精准计算\n减少人为误差
 
-:选择退款方式;
-if (原路退回?) then (是)
-  :调用支付网关\n原路退回收款账户;
-  if (退款成功?) then (否)
-    :标记异常\n人工处理;
-    :线下退款\n(银行转账);
-  else (是)
-  endif
-else (现金/其他)
-  :线下退款\n(银行转账);
+|财务人员|
+:复核退费明细与金额;
+if (金额是否有争议?) then (是)
+    :人工干预/调整退费金额\n(需填写调整原因);
+else (否)
+endif
+:确定最终退费金额;
+:按金额分级发起审批;
+
+if (退费金额 ≥ 5000元?) then (是)
+    |校长/管理层|
+    :校长加签审批;
+    note left: 大额退费预警\n同步抄送校长
+else (否)
+    |财务人员|
+    :财务主管审批;
 endif
 
-:退款完成;
-:更新订单状态→已退款;
+|财务人员|
+if (审批是否通过?) then (否)
+    :退回修改/驳回;
+    |教务/销售|
+    :重新协商退费方案;
+    stop
+else (是)
+    :确认执行退款;
+endif
 
-:财务冲销原收入确认;
-:生成退款凭证;
+if (原支付方式?) then (微信/支付宝)
+    |系统/支付网关|
+    :调用支付网关原路退回;
+    note right: 基于原始交易单号\n自动原路退款
+else (银行转账)
+    |财务人员|
+    :发起银行转账\n或批量导出出款文件;
+else (现金/刷卡)
+    |财务人员|
+    :通知学员前台退款\n(现金结清);
+endif
 
-:通知家长退款结果\n(短信+小程序);
-:记录退费原因\n(用于运营分析);
-
-stop
+if (退款是否成功?) then (否)
+    |系统/支付网关|
+    #pink:标记为异常订单\n记录失败日志;
+    note right: 财务人员需\n人工跟进处理
+    stop
+else (是)
+    |系统/支付网关|
+    :自动冲销相关票据与订单\n(生成红字发票/冲销单);
+    note right: 确保账实相符\n财务数据闭环
+    :推送退费成功通知\n(学员端/教务端/财务端);
+    note right: 通过站内信、短信\n或公众号通知
+    #lightgreen:退款流程结束;
+    stop
+endif
 
 @enduml

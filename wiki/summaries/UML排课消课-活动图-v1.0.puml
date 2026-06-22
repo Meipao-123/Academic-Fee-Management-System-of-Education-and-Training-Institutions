@@ -1,91 +1,204 @@
-@startuml 排课与消课流程-活动图
-' ============================================================
-' A3 建模智能体 — 活动图：排课与消课流程
-' 来源: 教务老师 需求记录
-' ============================================================
+@startuml
+skinparam backgroundColor #FEFEFE
+skinparam handwritten false
+skinparam activityBorderColor #2C3E50
+skinparam activityBorderThickness 2
+skinparam activityBackgroundColor #ECF0F1
+skinparam activityFontColor #2C3E50
+skinparam activityFontSize 13
+skinparam activityFontStyle bold
+skinparam arrowColor #7F8C8D
+skinparam arrowThickness 2
+skinparam partitionBorderColor #34495E
+skinparam partitionBorderThickness 2
+skinparam partitionBackgroundColor #F8F9FA
+skinparam noteBackgroundColor #FFF9E6
+skinparam noteBorderColor #F39C12
+skinparam noteFontColor #7D6608
+skinparam diamondBackgroundColor #D5F5E3
+skinparam diamondBorderColor #27AE60
+skinparam diamondFontColor #1E8449
+skinparam startColor #27AE60
+skinparam stopColor #E74C3C
+skinparam endColor #E74C3C
 
-title 排课与消课流程
-
-|排课阶段|
+|教务老师|
 start
-
-:教务老师选择课程/班级;
-:选择上课时段;
-
-:六维冲突检测\n(教师/教室/班级/课程/学员/时段);
-if (存在冲突?) then (是)
-  :列出冲突详情;
-  if (可调整?) then (是)
-    :调整时段/教室/教师;
-    :重新检测;
-  else (否)
-    :查看冲突优先级规则;
-    note right
-      冲突优先级(待确认):
-      1. 教师时间
-      2. 教室可用性
-      3. 学员时间
-      4. 班级容量
-      5. 课程类型
-      6. 时段偏好
-    end note
-    :按优先级强制排课\n(需主管确认);
-  endif
-else (否)
-endif
-
-:排课成功;
-:更新课表日历;
-:通知教师与学员\n(短信/小程序);
-
-|上课与消课阶段|
-:上课当天;
-:教师/学员签到\n(扫码/点名/小程序);
-
-if (全部签到?) then (是)
-  :自动确认消课;
-else (有缺席)
-  :标记缺勤;
-  if (学员请假?) then (是)
-    :扣除请假课时;
-    :触发补课流程;
-    note right
-      补课有效期: 30天
-      从请假日/原上课日/审批通过日起算
-      **待确认**
-    end note
-    :安排补课时段;
-    :重新排课(同排课流程);
-  else (无故缺勤)
-    :正常扣除课时;
-    :发送缺勤提醒给家长;
-  endif
-endif
-
-:按课程规则扣减课时;
-note right
-  一对一: 扣1课时
-  小班: 扣1课时/人
-  大班: 按考勤名单扣
-  **赠课扣减规则待确认**
+    :发起排课申请
+    确定课程、教师、教室、时段、名额;
+note right: 统筹学期排课
+资源高效配置
 end note
 
-:更新学员课时余额;
-:通知家长消课结果(小程序);
+|系统|
+    :系统执行冲突检测;
+    if (冲突检测结果?) then ([[$conflict 存在冲突]])
+        note left: 检查项：
+- 教师时间冲突
+- 教室场地冲突
+- 班级名额冲突
+- 学员时间重叠
+end note
+        |教务老师|
+        :调整排课参数
+        更换时段/教室/教师;
+        |系统|
+        :重新冲突检测;
+        if ([[$retry 再次检测]]) then ([[$still_conflict 仍有冲突]])
+            |教务老师|
+            :记录冲突日志
+            通知相关方协调;
+            note right: 突发调课场景：
+名额动态变动
+多方协同确认
+课时折算联动
+end note
+            stop
+        else ([[$resolved 冲突已解决]])
+        endif
+    else ([[$ok 无冲突]])
+    endif
 
-|统计阶段|
-:每日/每周 生成消课统计;
-
-:教务: 教师课时统计;
-:财务: 收入确认(按消课比例);
-note right
-  收入确认时点:
-  逐笔? 日结? 月结?
-  **待确认**
+    :锁定资源与名额;
+    note left: 暂扣原班级名额
+预占目标班级名额
+防止名额被误占
 end note
 
-:校长: 课消率/满班率看板;
+    :生成排课计划;
 
-stop
+|教务老师|
+    :通知相关方
+    (家长/学生/教师);
+    note right: 通知确认链：
+- 家长确认新时间
+- 教师确认课表
+- 记录反馈结果
+end note
 
-@enduml
+|家长/学生|
+    if (是否确认?) then ([[$confirm 确认同意]])
+        |系统|
+        :名额锁定生效;
+    elseif ([[$reject 反对/调整]])
+        |教务老师|
+        :二次协调
+        重新调整时段;
+        |系统|
+        :释放预占名额;
+        |教务老师|
+        :返回排课调整;
+        note right: 反对家长需
+二次协调
+未接电话需
+多次跟进
+end note
+        detach
+    else ([[$noanswer 未回复]])
+        |教务老师|
+        :多次跟进联络
+        记录跟进状态;
+        note right: 通知确认链断裂
+是常见痛点
+需系统提醒跟进
+end note
+        if (超时未确认?) then ([[$timeout 超时]])
+            :释放预占名额
+            标记为待定;
+            stop
+        else ([[$confirmed_late 最终确认]])
+            |系统|
+            :名额锁定生效;
+        endif
+    endif
+
+    :排课完成
+    课程正式排入课表;
+
+    |教务老师|
+    if (是否发生调课?) then ([[$reschedule 突发调课]])
+        :接到调课申请
+        (家长请假/教师变动/场地冲突);
+        note right: 最头疼环节：
+名额双重锁定
+手动操作易出错
+漏缴或延迟释放
+导致名额被误占
+end note
+        |系统|
+        :查找目标时段
+        空闲资源与名额;
+        if (目标班级有名额?) then ([[$has_slot 有名额]])
+            :暂扣原班级名额;
+            :预占目标班级名额;
+            note left: 名额双重锁定
+需同时操作
+防止被他人抢占
+end note
+            |教务老师|
+            :逐个通知家长
+            确认新时段;
+            if (全部确认?) then ([[$all_confirm 全部同意]])
+                |系统|
+                :释放原时段名额;
+                :目标班级名额锁定;
+                :更新班级人数;
+                |教务老师|
+                :调课完成;
+            else ([[$partial 部分不同意]])
+                :协调不同意家长
+                寻找替代方案;
+                note right: 补偿课时计算：
+请假折算vs调课补偿
+需明确区分
+防止混淆
+end note
+                |系统|
+                :部分名额释放
+                重新计算;
+            endif
+        else ([[$no_slot 无名额]])
+            |教务老师|
+            :通知家长名额已满
+            协商其他方案;
+            note right: 满班预警触发
+需灵活调整班级名额
+适应招生变动
+end note
+            stop
+        endif
+    else ([[$normal 正常进行]])
+    endif
+
+    :==== 上课日 ====;
+
+|教师|
+    :课堂开始
+    进行考勤;
+    if (考勤方式?) then ([[$scan 扫码打卡]])
+        |家长/学生|
+        :扫码签到;
+    else ([[$rollcall 教师点名]])
+        |教师|
+        :逐个点名
+        记录出勤;
+    endif
+
+|系统|
+    :记录考勤状态;
+    if (出勤状态?) then ([[$present 正常出勤]])
+        :标记为"已出勤";
+        |系统|
+        :执行正常消课;
+        note left: 扣除1课时
+更新剩余课时
+实时统计
+end note
+    elseif ([[$leave 请假]])
+        :标记为"请假";
+        note right: 请假折算与
+调课补偿需区分
+避免"请假记成调课"
+或"补偿课时未算入"
+end note
+        |教务老师

@@ -1,78 +1,139 @@
-@startuml 报名缴费流程-活动图
-' ============================================================
-' A3 建模智能体 — 活动图：报名缴费流程
-' 来源: 课程顾问+财务人员 需求记录
-' ============================================================
+@startuml
+skinparam backgroundColor #FEFEFE
+skinparam activity {
+  BackgroundColor #F0F4F8
+  BorderColor #2C3E50
+  FontColor #2C3E50
+  ArrowColor #3498DB
+  DiamondBackgroundColor #E8F8F5
+  DiamondBorderColor #1ABC9C
+  FontSize 12
+}
+skinparam partition {
+  BackgroundColor #FFFFFF
+  BorderColor #3498DB
+  FontColor #2C3E50
+  FontSize 14
+}
+skinparam note {
+  BackgroundColor #FCF3CF
+  BorderColor #F1C40F
+  FontColor #7D6608
+}
 
-title 报名缴费流程（含优惠与试听）
+|Customer| (客户)
+|Course Consultant| (课程顾问)
+|System| (系统)
+|Finance| (财务)
 
 start
+:Fork;
+fork
+  :提供联系信息;
+fork again
+  :判断线索来源;
+  if (来源?) then ([市场活动])
+    :自动建档;
+    note right: 自动带入姓名、电话等基本信息
+  else ([电话/微信/到访])
+    :手动录入核心字段;
+    note left: 补充意向课程、跟进详情等
+  endif
+end fork
 
-:家长咨询/到访;
-:课程顾问登记线索;
+|System|
+:重复检测机制;
+note right: 后台检索手机号/微信号\n进行唯一性校验
+if (存在重复?) then ([是])
+  :弹出警告并阻止建档;
+  |Course Consultant|
+  :查看归属人信息;
+  :联系归属人或认领;
+  note left: 避免重复跟进\n维护学员关系
+  stop
+else ([否])
+  :创建新线索;
+  :分配归属顾问;
+endif
 
-if (是否有试听需求?) then (是)
-  :安排试听课;
-  :试听后跟进;
-  if (家长满意?) then (否)
-    :记录为潜在客户;
-    :定期跟进提醒;
+|Course Consultant|
+:安排试听课;
+
+|Customer|
+:参加试听;
+if (意向?) then ([满意])
+  ::试听通过::
+else ([不满意])
+  :标记流失;
+  stop
+endif
+
+|Course Consultant|
+:推荐意向课程;
+
+|Customer|
+:确认选课;
+
+|Course Consultant|
+:申请优惠活动;
+
+|System|
+:校验优惠资格;
+if (条件?) then ([符合])
+  :自动应用优惠;
+else ([不符合])
+  |Finance|
+  :人工审批优惠申请;
+  note right: 财务核实特批资格\n保障优惠合规
+endif
+
+|Course Consultant|
+:生成报名缴费订单;
+note left: 含课程详情、优惠后金额等
+
+|Customer|
+:选择支付方式;
+fork
+  :微信/支付宝;
+  |System|
+  :支付接口同步;
+  note right: 拉取微信/支付宝支付通知\n实现“支付即记录”
+  if (支付状态?) then ([成功])
+    ::生成待确认收款单::
+  else ([失败])
+    :提示用户重试;
     stop
-  else (是)
+    kill
   endif
-else (否)
-endif
+fork again
+  :银行对公转账;
+  :完成转账并上传凭证;
+  |System|
+  :批量导入银行流水;
+  note left: 支持自动抓取或手动匹配\n提高对账效率
+  ::生成待确认收款单::
+fork again
+  :现金/刷卡;
+  |Course Consultant|
+  :前台在系统内录入;
+  note right: 直接选择“现金/刷卡”\n系统即时生成收款单
+  ::生成待确认收款单::
+end fork
 
-:选择课程与班型;
-:计算费用（原价）;
-
-if (是否有优惠?) then (是)
-  :选择优惠策略\n(早鸟/团购/连报/老带新);
-  :校验优惠叠加规则;
-  if (叠加合法?) then (是)
-    :应用优惠\n计算折后价;
-  else (否)
-    :触发优惠审批;
-    if (校长审批通过?) then (是)
-      :应用优惠;
-    else (否)
-      :使用原价;
-    endif
-  endif
-else (否)
-  :使用原价;
-endif
-
-:生成订单;
-:家长选择缴费方式\n(微信/支付宝/银行/现金);
-
-if (在线支付?) then (是)
-  :调用支付网关;
-  if (支付成功?) then (否)
-    :标记待支付\n发送提醒;
-    if (超时未付?) then (是)
-      :订单自动取消;
-      stop
-    else (否)
-      :家长重新支付;
-    endif
-  else (是)
-  endif
-else (现金/银行)
-  :财务人工确认收款;
-endif
-
-:订单状态→已支付;
-:发送报名成功通知\n(短信+小程序);
-:分配班级/生成学员档案;
-
-:财务记录收款\n生成财务凭证;
-if (是否预收款?) then (是)
-  :记录为递延收入\n待消课后逐笔确认;
-else (否)
-  :直接确认收入;
+|Finance|
+:执行“一键对账”;
+note left: 核心诉求：账实相符、可追溯、降风险
+if (金额匹配?) then ([完全一致])
+  :确认到账;
+  :更新收费台账;
+  :收入确认完成;
+  note right: 自动同步为确认收入\n保障台账实时准确
+else ([金额不匹配])
+  :标记为“异常待处理”;
+  note right: 包含少付或多付情况\n保留财务人工复核节点
+  :启动异常处理流程;
+  :通知课程顾问联系学员;
 endif
 
 stop
-
 @enduml
