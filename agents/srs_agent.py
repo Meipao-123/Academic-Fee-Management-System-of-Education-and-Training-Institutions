@@ -55,6 +55,7 @@ def generate_srs(records_summary, issue_summary, uml_summary):
         ],
         temperature=0.4,
         max_tokens=8192,
+        timeout=300,
     )
     return result["content"]
 
@@ -110,7 +111,7 @@ if __name__ == "__main__":
     print("调用 LLM 生成 SRS (约需30-60秒)...")
     srs = generate_srs(records, issues, uml)
 
-    out_path = ROOT / "wiki" / "summaries" / "SRS-v1.0.md"
+    out_path = ROOT / "wiki" / "summaries" / "SRS-v1.1.md"
     out_path.write_text(srs, encoding="utf-8")
     print("SRS 已保存到: %s" % out_path)
     print("字数: %d" % len(srs))

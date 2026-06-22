@@ -45,7 +45,7 @@ CONFIG = {
 
 
 # ── 核心：chat 函数 ────────────────────────────────────────────
-def chat(messages: list[dict], temperature: float = 0.7, max_tokens: int = 4096) -> dict:
+def chat(messages: list[dict], temperature: float = 0.7, max_tokens: int = 4096, timeout: int = 60) -> dict:
     """
     调用 DeepSeek API 进行对话补全。
 
@@ -53,6 +53,7 @@ def chat(messages: list[dict], temperature: float = 0.7, max_tokens: int = 4096)
         messages: [{"role": "system"|"user"|"assistant", "content": "..."}, ...]
         temperature: 采样温度 (0-2)
         max_tokens: 最大生成长度
+        timeout: HTTP 请求超时秒数 (默认 60，SRS 等大输出建议 300)
 
     Returns:
         {"content": str, "usage": dict}
@@ -77,7 +78,7 @@ def chat(messages: list[dict], temperature: float = 0.7, max_tokens: int = 4096)
     )
 
     try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
             data = json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
         err_body = e.read().decode("utf-8") if e.fp else str(e)
