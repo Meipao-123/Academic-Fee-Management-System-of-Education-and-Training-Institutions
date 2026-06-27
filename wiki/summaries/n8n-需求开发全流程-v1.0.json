@@ -1,0 +1,441 @@
+{
+  "name": "培训机构教务收费管理系统 — 需求工程流水线",
+  "id": "req-dev-pipeline-v1",
+  "version": "1.0",
+  "createdAt": "2026-06-24T00:00:00.000Z",
+  "updatedAt": "2026-06-24T00:00:00.000Z",
+  "settings": {
+    "callerPolicy": "workflowsFromSameOwner",
+    "timezone": "Asia/Shanghai",
+    "maxRetryCount": 3,
+    "saveExecutionProgress": true
+  },
+  "nodes": [
+    {
+      "id": "trigger-webhook",
+      "name": "Webhook 触发器",
+      "type": "n8n-nodes-base.webhook",
+      "position": [250, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "pipeline/req-dev/start",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "parallel-split",
+      "name": "并行分发 (5涉众)",
+      "type": "n8n-nodes-base.splitInBatches",
+      "position": [500, 300],
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      }
+    },
+    {
+      "id": "a1-course-consultant",
+      "name": "A1-课程顾问 需求获取",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [750, 100],
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.A1_API_BASE}}/api/agent/a1/course-consultant",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "stakeholder", "value": "course-consultant" },
+            { "name": "modules", "value": "线索建档,课程推荐,报名选课,优惠应用,客户跟进,转介绍" },
+            { "name": "output_path", "value": "raw/notes/Course Consultant-需求获取-{{$now.format('YYYYMMDD-HHmm')}}-需求记录.md" }
+          ]
+        },
+        "options": {
+          "timeout": 600000,
+          "retryOnFail": true,
+          "maxRetry": 2
+        }
+      }
+    },
+    {
+      "id": "a1-academic-affairs",
+      "name": "A1-教务老师 需求获取",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [750, 250],
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.A1_API_BASE}}/api/agent/a1/academic-affairs",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "stakeholder", "value": "academic-affairs" },
+            { "name": "modules", "value": "排课管理,班级管理,考勤消课,请假调课补课,转班,课时统计" },
+            { "name": "output_path", "value": "raw/notes/Academic Affairs-需求获取-{{$now.format('YYYYMMDD-HHmm')}}-需求记录.md" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a1-finance",
+      "name": "A1-财务人员 需求获取",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [750, 400],
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.A1_API_BASE}}/api/agent/a1/finance",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "stakeholder", "value": "finance" },
+            { "name": "modules", "value": "收款管理,预收款,退费流程,欠费续费,发票管理,支付对账,教师工资,财务报表" },
+            { "name": "output_path", "value": "raw/notes/Finance-需求获取-{{$now.format('YYYYMMDD-HHmm')}}-需求记录.md" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a1-principal",
+      "name": "A1-校长 需求获取",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [750, 550],
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.A1_API_BASE}}/api/agent/a1/principal",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "stakeholder", "value": "principal" },
+            { "name": "modules", "value": "经营看板,招生转化,教学运营,财务监控,多校区管理,审批管理,移动端" },
+            { "name": "output_path", "value": "raw/notes/Principal-需求获取-{{$now.format('YYYYMMDD-HHmm')}}-需求记录.md" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a1-system-admin",
+      "name": "A1-系统管理员 需求获取",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [750, 700],
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.A1_API_BASE}}/api/agent/a1/system-admin",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "stakeholder", "value": "system-admin" },
+            { "name": "modules", "value": "账号组织,权限RBAC,业务配置,部署扩展,备份灾备,支付接口,日志审计,安全" },
+            { "name": "output_path", "value": "raw/notes/System Admin-需求获取-{{$now.format('YYYYMMDD-HHmm')}}-需求记录.md" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a1-merge",
+      "name": "A1 结果汇总",
+      "type": "n8n-nodes-base.merge",
+      "position": [1000, 400],
+      "parameters": {
+        "mode": "wait",
+        "mergeByFields": {}
+      }
+    },
+    {
+      "id": "a2-analyze",
+      "name": "A2 需求分析",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1250, 400],
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.AGENT_API_BASE}}/api/agent/a2/analyze",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "input_dir", "value": "raw/notes/" },
+            { "name": "output_path", "value": "wiki/summaries/需求问题清单-v1.0.md" },
+            { "name": "check_types", "value": "模糊,不一致,矛盾,跨涉众冲突" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a2-switch",
+      "name": "A2 发现问题?",
+      "type": "n8n-nodes-base.switch",
+      "position": [1500, 400],
+      "parameters": {
+        "dataPropertyName": "issues_count",
+        "rules": {
+          "values": [
+            { "conditions": { "number": [{ "value1": "={{$json.issues_count}}", "operation": "larger", "value2": 0 }] } },
+            { "conditions": { "number": [{ "value1": "={{$json.issues_count}}", "operation": "equals", "value2": 0 }] } }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a2-feedback",
+      "name": "回退: A2→A1 补充获取",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1750, 250],
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.AGENT_API_BASE}}/api/pipeline/feedback/a2-to-a1",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "issues", "value": "={{$json.issues}}" },
+            { "name": "retry_count", "value": "={{$json.retry_count}}" },
+            { "name": "max_retry", "value": 3 }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a2-ok",
+      "name": "A2 通过 → A3",
+      "type": "n8n-nodes-base.noOp",
+      "position": [1750, 500],
+      "parameters": {}
+    },
+    {
+      "id": "a3-model",
+      "name": "A3 UML 建模",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [2000, 500],
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.AGENT_API_BASE}}/api/agent/a3/model",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "input_requirements", "value": "raw/notes/" },
+            { "name": "input_issues", "value": "wiki/summaries/需求问题清单-v1.0.md" },
+            { "name": "output_dir", "value": "wiki/summaries/" },
+            { "name": "artifacts", "value": "UML用例图-v1.0.puml,UML报名缴费-活动图-v1.0.puml,UML退费流程-活动图-v1.0.puml,UML排课消课-活动图-v1.0.puml" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a4-srs",
+      "name": "A4 SRS 生成",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [2250, 500],
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.AGENT_API_BASE}}/api/agent/a4/generate-srs",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "input_notes", "value": "raw/notes/" },
+            { "name": "input_issues", "value": "wiki/summaries/需求问题清单-v1.0.md" },
+            { "name": "input_uml_dir", "value": "wiki/summaries/" },
+            { "name": "output_path", "value": "wiki/summaries/SRS-v1.0.md" },
+            { "name": "standard", "value": "IEEE-830-1998" },
+            { "name": "min_words", "value": 15000 }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a5-verify",
+      "name": "A5 需求验证",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [2500, 500],
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.AGENT_API_BASE}}/api/agent/a5/verify",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "input_srs", "value": "wiki/summaries/SRS-v1.0.md" },
+            { "name": "input_notes", "value": "raw/notes/" },
+            { "name": "input_issues", "value": "wiki/summaries/需求问题清单-v1.0.md" },
+            { "name": "input_uml_dir", "value": "wiki/summaries/" },
+            { "name": "output_path", "value": "wiki/summaries/验证报告-v1.0.md" },
+            { "name": "dimensions", "value": "历史需求比对,问题清单比对,SRS内部一致性,UML一致性,非功能需求,外部接口,数据需求,跨涉众冲突,RTM完整性" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a5-switch",
+      "name": "A5 有 Blocker?",
+      "type": "n8n-nodes-base.switch",
+      "position": [2750, 500],
+      "parameters": {
+        "dataPropertyName": "blocker_count",
+        "rules": {
+          "values": [
+            { "conditions": { "number": [{ "value1": "={{$json.blocker_count}}", "operation": "larger", "value2": 0 }] } },
+            { "conditions": { "number": [{ "value1": "={{$json.blocker_count}}", "operation": "equals", "value2": 0 }] } }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a5-feedback",
+      "name": "回退: A5→A4 修订SRS",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [3000, 350],
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.AGENT_API_BASE}}/api/pipeline/feedback/a5-to-a4",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "verification_report", "value": "={{$json.report}}" },
+            { "name": "blocker_issues", "value": "={{$json.blockers}}" },
+            { "name": "retry_count", "value": "={{$json.retry_count}}" },
+            { "name": "max_retry", "value": 3 }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a5-ok",
+      "name": "A5 通过 → CCB",
+      "type": "n8n-nodes-base.noOp",
+      "position": [3000, 600],
+      "parameters": {}
+    },
+    {
+      "id": "ccb-approval",
+      "name": "CCB 人工审批",
+      "type": "n8n-nodes-base.wait",
+      "position": [3250, 600],
+      "parameters": {
+        "resume": "webhook",
+        "webhookPath": "pipeline/ccb/approve",
+        "options": {
+          "webhookResponseMode": "responseNode"
+        }
+      },
+      "webhookId": "ccb-approval-webhook"
+    },
+    {
+      "id": "ccb-switch",
+      "name": "CCB 审批结果",
+      "type": "n8n-nodes-base.switch",
+      "position": [3500, 600],
+      "parameters": {
+        "dataPropertyName": "decision",
+        "rules": {
+          "values": [
+            { "conditions": { "string": [{ "value1": "={{$json.decision}}", "operation": "equals", "value2": "approve" }] } },
+            { "conditions": { "string": [{ "value1": "={{$json.decision}}", "operation": "equals", "value2": "reject" }] } }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ccb-reject",
+      "name": "CCB 驳回 → A4",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [3750, 450],
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.AGENT_API_BASE}}/api/pipeline/feedback/ccb-to-a4",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "rejection_reason", "value": "={{$json.comment}}" },
+            { "name": "retry_count", "value": "={{$json.retry_count}}" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a6-baseline",
+      "name": "A6 基线创立",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [3750, 700],
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.AGENT_API_BASE}}/api/agent/a6/baseline",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "srs_path", "value": "wiki/summaries/SRS-v1.0.md" },
+            { "name": "verification_path", "value": "wiki/summaries/验证报告-v2.0.md" },
+            { "name": "baseline_dir", "value": "wiki/baselines/" },
+            { "name": "project_code", "value": "EDU" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "notify-done",
+      "name": "通知: 基线完成",
+      "type": "n8n-nodes-base.slack",
+      "position": [4000, 700],
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "channel": "#req-engineering",
+        "text": "=需求工程流水线执行完成\n基线编号: {{$json.baseline_id}}\nSRS版本: {{$json.srs_version}}\nBlocker: {{$json.blocker_count}} | Major: {{$json.major_count}} | Minor: {{$json.minor_count}}"
+      }
+    }
+  ],
+  "connections": {
+    "trigger-webhook": { "main": [[ { "node": "parallel-split", "type": "main", "index": 0 } ]] },
+    "parallel-split": { "main": [
+      [{ "node": "a1-course-consultant", "type": "main", "index": 0 }],
+      [{ "node": "a1-academic-affairs", "type": "main", "index": 0 }],
+      [{ "node": "a1-finance", "type": "main", "index": 0 }],
+      [{ "node": "a1-principal", "type": "main", "index": 0 }],
+      [{ "node": "a1-system-admin", "type": "main", "index": 0 }]
+    ]},
+    "a1-course-consultant": { "main": [[ { "node": "a1-merge", "type": "main", "index": 0 } ]] },
+    "a1-academic-affairs": { "main": [[ { "node": "a1-merge", "type": "main", "index": 1 } ]] },
+    "a1-finance": { "main": [[ { "node": "a1-merge", "type": "main", "index": 2 } ]] },
+    "a1-principal": { "main": [[ { "node": "a1-merge", "type": "main", "index": 3 } ]] },
+    "a1-system-admin": { "main": [[ { "node": "a1-merge", "type": "main", "index": 4 } ]] },
+    "a1-merge": { "main": [[ { "node": "a2-analyze", "type": "main", "index": 0 } ]] },
+    "a2-analyze": { "main": [[ { "node": "a2-switch", "type": "main", "index": 0 } ]] },
+    "a2-switch": {
+      "main": [
+        [{ "node": "a2-feedback", "type": "main", "index": 0 }],
+        [{ "node": "a2-ok", "type": "main", "index": 0 }]
+      ]
+    },
+    "a2-ok": { "main": [[ { "node": "a3-model", "type": "main", "index": 0 } ]] },
+    "a3-model": { "main": [[ { "node": "a4-srs", "type": "main", "index": 0 } ]] },
+    "a4-srs": { "main": [[ { "node": "a5-verify", "type": "main", "index": 0 } ]] },
+    "a5-verify": { "main": [[ { "node": "a5-switch", "type": "main", "index": 0 } ]] },
+    "a5-switch": {
+      "main": [
+        [{ "node": "a5-feedback", "type": "main", "index": 0 }],
+        [{ "node": "a5-ok", "type": "main", "index": 0 }]
+      ]
+    },
+    "a5-ok": { "main": [[ { "node": "ccb-approval", "type": "main", "index": 0 } ]] },
+    "ccb-approval": { "main": [[ { "node": "ccb-switch", "type": "main", "index": 0 } ]] },
+    "ccb-switch": {
+      "main": [
+        [{ "node": "a6-baseline", "type": "main", "index": 0 }],
+        [{ "node": "ccb-reject", "type": "main", "index": 0 }]
+      ]
+    },
+    "a6-baseline": { "main": [[ { "node": "notify-done", "type": "main", "index": 0 } ]] }
+  }
+}
