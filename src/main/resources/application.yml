@@ -1,0 +1,52 @@
+spring:
+  application:
+    name: edu
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+
+  # ── JPA ──
+  jpa:
+    hibernate:
+      ddl-auto: validate  # 生产禁止自动建表，由 Flyway 管理
+    show-sql: false
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+
+  # ── Flyway ──
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+    baseline-version: "1"
+
+  # ── Jackson ──
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+    default-property-inclusion: non_null
+
+# ── JWT ──
+jwt:
+  secret: ${JWT_SECRET:change-me-in-production-min-256-bits}
+  access-token-ttl: 7200     # 2 小时 (秒)
+  refresh-token-ttl: 604800  # 7 天 (秒)
+
+# ── 日志 ──
+logging:
+  level:
+    root: INFO
+    com.meipao.edu: DEBUG
+    org.springframework.security: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{traceId}] %logger{36} - %msg%n"
+
+# ── SpringDoc OpenAPI ──
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+  paths-to-match: /api/v1/**

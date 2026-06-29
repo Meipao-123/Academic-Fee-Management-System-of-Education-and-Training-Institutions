@@ -1,0 +1,29 @@
+version: '3.8'
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: dev123456
+      MYSQL_DATABASE: edu
+    ports: ["3306:3306"]
+    volumes: [mysql_data:/var/lib/mysql]
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    command: redis-server --requirepass devredis
+
+  app:
+    build: .
+    ports: ["8080:8080"]
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/edu?useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: dev123456
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PASSWORD: devredis
+    depends_on: [mysql, redis]
+
+volumes:
+  mysql_data:

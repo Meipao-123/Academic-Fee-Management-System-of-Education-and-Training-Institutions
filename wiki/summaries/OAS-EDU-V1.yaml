@@ -1,0 +1,579 @@
+openapi: "3.0.3"
+info:
+  title: "EDU 培训机构教务收费管理系统 API"
+  version: "1.0.0"
+  description: |
+    基于 ASD-EDU-V1（模块化分层单体）、ADR-002（接口契约决策）的 OpenAPI 3.0.3 接口规范。
+    覆盖 7 模块核心 API，统一响应体 `{code, message, data, timestamp, traceId}`。
+  contact:
+    name: "EDU 项目组"
+
+servers:
+  - url: "https://api.edu.example.com/api/v1"
+    description: "生产环境（HTTPS）"
+  - url: "http://localhost:8080/api/v1"
+    description: "本地开发环境"
+
+tags:
+  - name: CRM
+    description: "线索与学员管理（MOD-001）"
+  - name: Enrollment
+    description: "报名缴费与订单管理（MOD-002）"
+  - name: Academic
+    description: "教务排课与消课管理（MOD-003）"
+  - name: Finance
+    description: "财务管理与核算（MOD-004）"
+  - name: Report
+    description: "报表分析与决策驾驶舱（MOD-005，只读）"
+  - name: Admin
+    description: "系统管理与基础配置（MOD-006）"
+  - name: Public
+    description: "公开接口（认证/回调）"
+
+paths:
+  # ── CRM: 线索与学员管理 ──
+  /crm/leads:
+    get:
+      tags: [CRM]
+      summary: "查询线索列表"
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [PENDING, FOLLOWING, CONVERTED, LOST] }
+        - name: page
+          in: query
+          schema: { type: integer, default: 0 }
+        - name: size
+          in: query
+          schema: { type: integer, default: 20 }
+      responses:
+        "200": { $ref: "#/components/responses/PaginatedLeads" }
+    post:
+      tags: [CRM]
+      summary: "创建线索（多渠道自动建档或手工登记）"
+      requestBody: { $ref: "#/components/requestBodies/CreateLead" }
+      responses:
+        "201": { $ref: "#/components/responses/LeadCreated" }
+        "409": { $ref: "#/components/responses/DuplicateLead" }
+
+  /crm/leads/{leadId}/convert:
+    post:
+      tags: [CRM]
+      summary: "线索转化为正式学员"
+      parameters:
+        - name: leadId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                courseIds: { type: array, items: { type: integer } }
+                assignedConsultantId: { type: integer }
+      responses:
+        "200": { $ref: "#/components/responses/StudentCreated" }
+
+  /crm/students/{studentId}:
+    get:
+      tags: [CRM]
+      summary: "查询学员详情"
+      parameters:
+        - name: studentId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200": { $ref: "#/components/responses/StudentDetail" }
+
+  # ── Enrollment: 报名缴费与订单管理 ──
+  /enrollment/orders:
+    post:
+      tags: [Enrollment]
+      summary: "创建报名订单"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [studentId, classId]
+              properties:
+                studentId: { type: integer }
+                classId: { type: integer }
+                couponCode: { type: string }
+                discountReason: { type: string }
+      responses:
+        "201": { $ref: "#/components/responses/OrderCreated" }
+        "400": { $ref: "#/components/responses/BusinessError" }
+
+  /enrollment/orders/{orderId}:
+    get:
+      tags: [Enrollment]
+      summary: "查询订单详情（含支付状态）"
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { $ref: "#/components/responses/OrderDetail" }
+
+  /enrollment/orders/{orderId}/payment:
+    post:
+      tags: [Enrollment]
+      summary: "发起支付（生成微信/支付宝支付参数）"
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [channel]
+              properties:
+                channel: { type: string, enum: [WECHAT, ALIPAY] }
+      responses:
+        "200": { $ref: "#/components/responses/PaymentInitiated" }
+
+  /enrollment/orders/{orderId}/cancel:
+    post:
+      tags: [Enrollment]
+      summary: "取消订单（仅待支付状态可取消）"
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { $ref: "#/components/responses/OrderCancelled" }
+
+  # ── Academic: 教务排课与消课管理 ──
+  /academic/schedules:
+    get:
+      tags: [Academic]
+      summary: "查询排课计划"
+      parameters:
+        - name: classId
+          in: query
+          schema: { type: integer }
+        - name: teacherId
+          in: query
+          schema: { type: integer }
+        - name: weekStart
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        "200": { $ref: "#/components/responses/ScheduleList" }
+    post:
+      tags: [Academic]
+      summary: "批量创建排课"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [classId, teacherId, roomId, weekdays, timeStart, timeEnd, semesterStart, semesterEnd]
+              properties:
+                classId: { type: integer }
+                teacherId: { type: integer }
+                roomId: { type: integer }
+                weekdays: { type: array, items: { type: integer, minimum: 1, maximum: 7 } }
+                timeStart: { type: string, pattern: "^\\d{2}:\\d{2}$", example: "09:00" }
+                timeEnd: { type: string, pattern: "^\\d{2}:\\d{2}$", example: "10:30" }
+                semesterStart: { type: string, format: date }
+                semesterEnd: { type: string, format: date }
+      responses:
+        "201": { $ref: "#/components/responses/ScheduleCreated" }
+        "409": { $ref: "#/components/responses/ScheduleConflict" }
+
+  /academic/schedules/{scheduleId}/reschedule:
+    post:
+      tags: [Academic]
+      summary: "发起调课申请（进入多方协同确认流程）"
+      parameters:
+        - name: scheduleId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason, newDate, newTimeStart, newTimeEnd]
+              properties:
+                reason: { type: string }
+                newDate: { type: string, format: date }
+                newTimeStart: { type: string }
+                newTimeEnd: { type: string }
+      responses:
+        "200": { $ref: "#/components/responses/RescheduleCreated" }
+
+  /academic/attendance:
+    post:
+      tags: [Academic]
+      summary: "学员签到（扫码或教师点名）"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [studentId, lessonId]
+              properties:
+                studentId: { type: integer }
+                lessonId: { type: integer }
+                method: { type: string, enum: [QR_SCAN, MANUAL] }
+      responses:
+        "200": { $ref: "#/components/responses/AttendanceRecorded" }
+
+  # ── Finance: 财务管理与核算 ──
+  /finance/ledgers:
+    get:
+      tags: [Finance]
+      summary: "查询收费台账"
+      parameters:
+        - name: orderNo
+          in: query
+          schema: { type: string }
+        - name: dateFrom
+          in: query
+          schema: { type: string, format: date }
+        - name: dateTo
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        "200": { $ref: "#/components/responses/LedgerList" }
+
+  /finance/refunds:
+    post:
+      tags: [Finance]
+      summary: "发起退费申请（进入多级审批流程）"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [orderNo, reason, amount]
+              properties:
+                orderNo: { type: string }
+                reason: { type: string }
+                amount: { type: number }
+      responses:
+        "201": { $ref: "#/components/responses/RefundCreated" }
+
+  /finance/refunds/{refundId}/approve:
+    post:
+      tags: [Finance]
+      summary: "审批退费（主管/财务/校长 多级）"
+      parameters:
+        - name: refundId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [approved, comment]
+              properties:
+                approved: { type: boolean }
+                comment: { type: string }
+      responses:
+        "200": { $ref: "#/components/responses/RefundApproved" }
+
+  # ── Report: 报表分析与决策驾驶舱（只读） ──
+  /report/dashboard:
+    get:
+      tags: [Report]
+      summary: "校长驾驶舱核心指标"
+      parameters:
+        - name: dateRange
+          in: query
+          schema: { type: string, enum: [TODAY, THIS_WEEK, THIS_MONTH, LAST_MONTH] }
+      responses:
+        "200":
+          description: "核心指标面板"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  revenue: { type: number, description: "今日营收" }
+                  retentionRate: { type: number, description: "续费率 %" }
+                  occupancyRate: { type: number, description: "满班率 %" }
+                  refundRate: { type: number, description: "退费率 %" }
+                  newLeads: { type: integer, description: "今日新增线索" }
+                  alerts: { type: array, items: { $ref: "#/components/schemas/Alert" } }
+
+  /report/funnels:
+    get:
+      tags: [Report]
+      summary: "招生转化漏斗"
+      parameters:
+        - name: dateFrom
+          in: query
+          schema: { type: string, format: date }
+        - name: dateTo
+          in: query
+          schema: { type: string, format: date }
+        - name: channel
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: "转化漏斗数据"
+
+  /report/revenue:
+    get:
+      tags: [Report]
+      summary: "多校区营收对比"
+      parameters:
+        - name: dateFrom
+          in: query
+          schema: { type: string, format: date }
+        - name: dateTo
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: "校区营收对比数据"
+
+  # ── Admin: 系统管理与基础配置 ──
+  /admin/users:
+    get:
+      tags: [Admin]
+      summary: "查询用户列表"
+      parameters:
+        - name: role
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: "用户列表"
+    post:
+      tags: [Admin]
+      summary: "创建用户"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password, role, campusId]
+              properties:
+                username: { type: string }
+                password: { type: string, minLength: 8 }
+                role: { type: string, enum: [CONSULTANT, ACADEMIC, FINANCE, PRINCIPAL, ADMIN] }
+                campusId: { type: integer }
+      responses:
+        "201": { $ref: "#/components/responses/UserCreated" }
+
+  /admin/configs:
+    put:
+      tags: [Admin]
+      summary: "更新系统配置（支持热更新）"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                key: { type: string }
+                value: { type: string }
+      responses:
+        "200":
+          description: "配置已更新"
+
+  /admin/audit-logs:
+    get:
+      tags: [Admin]
+      summary: "查询操作审计日志"
+      parameters:
+        - name: operatorId
+          in: query
+          schema: { type: integer }
+        - name: action
+          in: query
+          schema: { type: string }
+        - name: dateFrom
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: "审计日志列表"
+
+  # ── Public: 开放接口 ──
+  /public/callback/wechat-pay:
+    post:
+      tags: [Public]
+      summary: "微信支付异步回调通知"
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: "回调已接收"
+
+  /public/callback/alipay:
+    post:
+      tags: [Public]
+      summary: "支付宝支付异步回调通知"
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: "回调已接收"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "JWT Access Token（2h 有效期）"
+
+  responses:
+    PaginatedLeads:
+      description: "分页线索列表"
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/ApiResponse"
+              - type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      content: { type: array, items: { $ref: "#/components/schemas/Lead" } }
+                      page: { type: integer }
+                      size: { type: integer }
+                      totalElements: { type: integer }
+                      totalPages: { type: integer }
+    LeadCreated:
+      description: "线索创建成功"
+    DuplicateLead:
+      description: "线索重复（手机号已存在）"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    StudentCreated:
+      description: "学员创建成功"
+    StudentDetail:
+      description: "学员详情（脱敏后）"
+    OrderCreated:
+      description: "订单创建成功"
+    OrderDetail:
+      description: "订单详情（含支付状态）"
+    PaymentInitiated:
+      description: "支付参数（二维码/链接）"
+    OrderCancelled:
+      description: "订单已取消"
+    ScheduleList:
+      description: "排课计划列表"
+    ScheduleCreated:
+      description: "排课创建成功"
+    ScheduleConflict:
+      description: "排课冲突"
+    RescheduleCreated:
+      description: "调课申请已创建"
+    AttendanceRecorded:
+      description: "签到记录成功"
+    LedgerList:
+      description: "收费台账列表"
+    RefundCreated:
+      description: "退费申请已创建"
+    RefundApproved:
+      description: "退费审批完成"
+    UserCreated:
+      description: "用户创建成功"
+    BusinessError:
+      description: "业务错误"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  requestBodies:
+    CreateLead:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [name, phone]
+            properties:
+              name: { type: string, description: "学员/家长姓名" }
+              phone: { type: string, pattern: "^1[3-9]\\d{9}$", description: "手机号（将自动查重）" }
+              source: { type: string, enum: [ONLINE_AD, REFERRAL, WALK_IN, GROUND_PUSH], description: "线索来源" }
+              campusId: { type: integer, description: "归属校区" }
+
+  schemas:
+    ApiResponse:
+      type: object
+      required: [code, message, timestamp, traceId]
+      properties:
+        code: { type: integer, description: "0=成功，1xxxxx=业务异常，9xxxxx=系统异常" }
+        message: { type: string }
+        data: { type: object }
+        timestamp: { type: string, format: date-time }
+        traceId: { type: string }
+
+    ErrorResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApiResponse"
+        - type: object
+          properties:
+            data: { type: object, nullable: true, default: null }
+          example:
+            code: 10101
+            message: "手机号格式错误"
+            data: null
+            timestamp: "2026-06-24T10:00:00Z"
+            traceId: "a1b2c3d4e5f6"
+
+    Lead:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        phone: { type: string, description: "中间4位脱敏" }
+        source: { type: string }
+        status: { type: string, enum: [PENDING, FOLLOWING, CONVERTED, LOST] }
+        createdAt: { type: string, format: date-time }
+
+    Alert:
+      type: object
+      properties:
+        type: { type: string, enum: [REVENUE_DROP, REFUND_SPIKE, LOW_RETENTION, LOW_OCCUPANCY] }
+        message: { type: string }
+        severity: { type: string, enum: [YELLOW, ORANGE, RED] }
+        campusId: { type: integer }
+
+security:
+  - BearerAuth: []
